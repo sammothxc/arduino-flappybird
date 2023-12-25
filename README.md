@@ -3,9 +3,10 @@
 This is a Flappy Bird clone for the ESP32. It is written in C++ and uses the Arduino framework. It is designed to run on a Heltec WiFi Kit 32 V2 board, but can be easily modified to run on other ESP32 boards and a 128x64 OLED display.
 
 ## Features
-- EEPROM high score save
+- EEPROM high score save persists across resets and power cycles
 - Circuit and hardware simplified to a single button and an OLED display
 - Configurable for different boards and displays
+- Difficulty increases as the game progresses
 
 ## Configurations
 The code defines several configurations, including:
