@@ -34,3 +34,7 @@ You will need the following libraries installed on your Arduino IDE or PlatformI
 
 ## License
 This project is licensed under the GNU General Public License v3.0 - see the LICENSE.md file for details.
+
+## TODO
+- Port to ESP8266
+- Port to Arduino AVRs if possible
