@@ -2,4 +2,6 @@
 .vscode
 .DS_Store
 platformio.ini
-esp32-flappybird.code-workspace
+*.code-workspace
+secretfile.*
+__pycache__
