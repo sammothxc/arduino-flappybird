@@ -32,6 +32,8 @@
 //#define flash_led             //uncomment to flash led on death
 #define button 0                //button pin
 #define led 25                  //led pin
+#define oled_w 128
+#define oled_h 64
 #define oled_sda 4              //sda pin
 #define oled_scl 15             //scl pin
 #define oled_rst 16             //rst pin
@@ -42,11 +44,14 @@
 #ifdef ARDUINO_ARCH_AVR
   #include <Adafruit_SSD1306.h>
   #include <Adafruit_GFX.h>
+  Adafruit_SSD1306 display = Adafruit_SSD1306(oled_w, oled_h, &Wire, -1);
 #endif
-#ifdef HELTEC_BOARD
+#if defined(HELTEC_BOARD) && (defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_ESP8266))
   #include "heltec.h"
+  SSD1306Wire  display(oled_i2c, oled_sda, oled_scl, oled_rst);
 #elif defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_ESP8266)
   #include <SSD1306Wire.h>
+  SSD1306Wire  display(oled_i2c, oled_sda, oled_scl, GEOMETRY_128_64);
 #endif
 #define space 32
 #define fx 30
@@ -60,11 +65,6 @@
 #define map_buffer 4
 #define speed_u 0.03
 #define speed_d 0.01
-#ifdef HELTEC_WIFI_LORA_32_V2
-  SSD1306Wire  display(oled_i2c, oled_sda, oled_scl, oled_rst);
-#else
-  SSD1306Wire  display(oled_i2c, oled_sda, oled_scl, GEOMETRY_128_64);
-#endif
 ///////////////////////////////////////////////////////////
 /////////////////////// VARIABLES /////////////////////////
 ///////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ void generate_map(){
   }
 }
 
-#ifdef ARDUINO_ARCH_ESP32 || ARDUINO_ARCH_ESP8266
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_ESP8266)
 void homescreen(){
   display.clear();
   display.setFont(ArialMT_Plain_16);
@@ -143,6 +143,11 @@ void draw_score(){              //draw scorebox
 
 void clearDisplay(){
   display.clear();
+}
+
+void writeEEPROM(int address, int value){
+  EEPROM.write(address, value);
+  EEPROM.commit();
 }
 
 void setup(){
@@ -212,6 +217,10 @@ void clearDisplay(){
   display.clearDisplay();
 }
 
+void writeEEPROM(int address, int value){
+  EEPROM.write(address, value);
+}
+
 void setup(){
   pinMode(button, INPUT_PULLUP);
   EEPROM.begin();
@@ -225,8 +234,7 @@ void setup(){
 #endif
 
 void clear_hiscore(){
-  EEPROM.write(flappy_addr, 0);
-  EEPROM.commit();
+  writeEEPROM(flappy_addr, 0);
 }
 
 void death(){                  //death screen and clear game
@@ -240,8 +248,7 @@ void death(){                  //death screen and clear game
   digitalWrite(led, LOW);
   if(last > hiscore){
     hiscore = last;
-    EEPROM.write(flappy_addr, hiscore);
-    EEPROM.commit();
+    writeEEPROM(flappy_addr, hiscore);
   }
 }
 
