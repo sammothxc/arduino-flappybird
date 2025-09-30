@@ -1,5 +1,5 @@
 /*
-    ESP32 Flappybird Game
+    Arduino Flappybird Game
     Copyright (C) 2023  Sam Warr
 
     This program is free software: you can redistribute it and/or modify
@@ -39,9 +39,13 @@
 ///////////////////////////////////////////////////////////
 /////////////////////// DEFINES ///////////////////////////
 ///////////////////////////////////////////////////////////
+#ifdef ARDUINO_ARCH_AVR
+  #include <Adafruit_SSD1306.h>
+  #include <Adafruit_GFX.h>
+#endif
 #ifdef HELTEC_BOARD
   #include "heltec.h"
-#else
+#elif defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_ESP8266)
   #include <SSD1306Wire.h>
 #endif
 #define space 32
@@ -49,7 +53,7 @@
 #define speed 0.01
 #define oled_w 128
 #define oled_h 64
-#define eeprom_size 1
+#define eeprom_size 5
 #define flappy_addr 0
 #define xbm_h 9
 #define xbm_w 14
@@ -81,14 +85,14 @@ int led_state = LOW;
 ///////////////////////////////////////////////////////////
 /////////////////////// FUNCTIONS /////////////////////////
 ///////////////////////////////////////////////////////////
-void wait4start(){                  //wait for button press
+void wait4start(){
     if(digitalRead(button) == 0){
       playing = true;
       printed = false;
   }
 }
 
-void generate_map(){               //generate map of pipes
+void generate_map(){
   for(int i=0; i<map_buffer; i++){
     wallx[i] = oled_w + ((i + 1) * space);
     gap[i] = random(0, 33);
@@ -96,7 +100,8 @@ void generate_map(){               //generate map of pipes
   }
 }
 
-void homescreen(){                 //draw homescreen
+#ifdef ARDUINO_ARCH_ESP32 || ARDUINO_ARCH_ESP8266
+void homescreen(){
   display.clear();
   display.setFont(ArialMT_Plain_16);
   display.drawString(0, 4, "Flappy");
@@ -116,12 +121,7 @@ void homescreen(){                 //draw homescreen
   generate_map();
 }
 
-void clear_hiscore(){            //clear hi score from EEPROM
-  EEPROM.write(flappy_addr, 0);
-  EEPROM.commit();
-}
-
-void draw_map(){                 //draw map of pipes
+void draw_map(){
   for(int j=0; j<map_buffer; j++){
     display.fillRect(wallx[j], 0, 6, oled_h);
     display.setColor(BLACK);
@@ -141,6 +141,94 @@ void draw_score(){              //draw scorebox
   display.setColor(WHITE);
 }
 
+void clearDisplay(){
+  display.clear();
+}
+
+void setup(){
+  pinMode(button, INPUT_PULLUP);
+  EEPROM.begin(eeprom_size);
+  hiscore = EEPROM.read(flappy_addr);
+  display.init();
+  display.setFont(ArialMT_Plain_10);
+  #ifdef flipped
+    display.flipScreenVertically();
+  #endif
+  #ifdef clear_hiscore
+    clear_hiscore();
+  #endif
+}
+#endif
+
+#ifdef ARDUINO_ARCH_AVR
+void homescreen(){
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 4);
+  display.print("Flappy");
+  display.drawXBitmap(0, 0, background, oled_w, oled_h, SSD1306_WHITE);
+  display.drawXBitmap(55, 7, bird, xbm_w, xbm_h, SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setCursor(0, 47);
+  display.print("Press to Start");
+  if(not played){
+    display.setCursor(0, 28);
+    display.print("Hi score: " + String(hiscore));
+  }
+  if(played){
+    display.setCursor(0, 24);
+    display.print("Scored: " + String(last));
+    display.setCursor(0, 34);
+    display.print("Hi score: " + String(hiscore));
+  }
+  display.display();
+  printed = true;
+  generate_map();
+}
+
+void draw_map(){
+  for(int j=0; j<map_buffer; j++){
+    display.fillRect(wallx[j], 0, 6, oled_h, SSD1306_WHITE);
+    display.setTextColor(SSD1306_BLACK);
+    display.fillRect(wallx[j], gap[j], 6, gap_size[j], SSD1306_BLACK);
+    display.setTextColor(SSD1306_WHITE);
+  }
+}
+
+void draw_bird(){
+  display.drawXBitmap(fx, fy, bird, xbm_w, xbm_h, SSD1306_WHITE);
+}
+
+void draw_score(){              //draw scorebox
+  display.fillRect(0, 0, 15, 13, SSD1306_WHITE);
+  display.setTextColor(SSD1306_BLACK);
+  display.setCursor(2, 0);
+  display.print(String(score));
+  display.setTextColor(SSD1306_WHITE);
+}
+
+void clearDisplay(){
+  display.clearDisplay();
+}
+
+void setup(){
+  pinMode(button, INPUT_PULLUP);
+  EEPROM.begin();
+  hiscore = EEPROM.read(flappy_addr);
+  display.begin(SSD1306_SWITCHCAPVCC, oled_i2c);
+  display.setTextSize(1);
+  #ifdef clear_hiscore
+    clear_hiscore();
+  #endif
+}
+#endif
+
+void clear_hiscore(){
+  EEPROM.write(flappy_addr, 0);
+  EEPROM.commit();
+}
+
 void death(){                  //death screen and clear game
   playing = false;
   fy = 22;
@@ -157,23 +245,6 @@ void death(){                  //death screen and clear game
   }
 }
 
-void setup(){
-  pinMode(button, INPUT_PULLUP);
-  EEPROM.begin(eeprom_size);
-  hiscore = EEPROM.read(flappy_addr);
-  display.init();
-  display.setFont(ArialMT_Plain_10);
-  #ifdef flipped
-    display.flipScreenVertically();
-  #endif
-  #ifdef flash_led
-    pinMode(led, OUTPUT);
-  #endif
-  #ifdef clear_hiscore
-    clear_hiscore();
-  #endif
-}
-
 void loop(){
   if(not playing && not printed){
     homescreen();
@@ -182,7 +253,7 @@ void loop(){
     wait4start();
   }
   if(playing){
-    display.clear();
+    clearDisplay();
     if(digitalRead(button) == 0){
       if(not debouncer){
         current = millis();
@@ -228,6 +299,6 @@ void loop(){
     draw_map();
     draw_bird();
     draw_score();
-    display.display();
+    clearDisplay();
   }
 }
