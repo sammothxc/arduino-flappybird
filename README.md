@@ -1,4 +1,4 @@
-# Uno/ESP Flappybird Game
+# Arduino Flappybird Game
 ## Description
 This is a Flappy Bird clone for Arduino boards. It is written in C++ and uses the Arduino framework. It is designed to run on any Arduino boards board, but can was written specifically with the Heltec Wifi kit ESP32. This board among others are perfect because they come with a 128x64 OLED display, a button, and an LED.
 
